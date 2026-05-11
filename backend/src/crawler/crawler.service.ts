@@ -88,6 +88,10 @@ export class CrawlerService {
         return max;
       });
 
+      if (latestNumber === 0) {
+        throw new Error('Could not detect latest chapter number from site');
+      }
+
       this.logger.log(`Latest chapter on site: ${latestNumber}`);
       return latestNumber;
     } finally {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { startCrawl, startSync, subscribeToCrawl, CrawlEvent, CrawlDone } from '@/lib/api';
 import Toast from './Toast';
 
@@ -9,7 +9,14 @@ export default function CrawlPanel() {
   const [events, setEvents] = useState<CrawlEvent[]>([]);
   const [summary, setSummary] = useState<CrawlDone | null>(null);
   const [crawling, setCrawling] = useState(false);
+  const [error, setError] = useState('');
   const unsubRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      unsubRef.current?.();
+    };
+  }, []);
 
   const handleProgress = (event: CrawlEvent) => {
     setEvents((prev) => [...prev, event]);
@@ -24,14 +31,18 @@ export default function CrawlPanel() {
     if (!input.trim() || crawling) return;
     setEvents([]);
     setSummary(null);
+    setError('');
     setCrawling(true);
 
     try {
       const { crawlId } = await startCrawl(input.trim());
-      unsubRef.current = subscribeToCrawl(crawlId, handleProgress, handleDone);
+      unsubRef.current = subscribeToCrawl(crawlId, handleProgress, handleDone, () => {
+        setCrawling(false);
+        setError('Connection lost. Check if the server is running.');
+      });
     } catch (e) {
       setCrawling(false);
-      setEvents([{ chapter_number: 0, status: 'error', message: (e as Error).message }]);
+      setError((e as Error).message);
     }
   };
 
@@ -39,14 +50,18 @@ export default function CrawlPanel() {
     if (crawling) return;
     setEvents([]);
     setSummary(null);
+    setError('');
     setCrawling(true);
 
     try {
       const { crawlId } = await startSync();
-      unsubRef.current = subscribeToCrawl(crawlId, handleProgress, handleDone);
+      unsubRef.current = subscribeToCrawl(crawlId, handleProgress, handleDone, () => {
+        setCrawling(false);
+        setError('Connection lost. Check if the server is running.');
+      });
     } catch (e) {
       setCrawling(false);
-      setEvents([{ chapter_number: 0, status: 'error', message: (e as Error).message }]);
+      setError((e as Error).message);
     }
   };
 
@@ -76,6 +91,12 @@ export default function CrawlPanel() {
           Sync Latest
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 px-3 py-2 border rounded text-sm bg-red-100 text-red-800 border-red-300">
+          {error}
+        </div>
+      )}
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {events.map((event, i) => (

@@ -82,6 +82,7 @@ export function subscribeToCrawl(
   crawlId: string,
   onProgress: (event: CrawlEvent) => void,
   onDone: (summary: CrawlDone) => void,
+  onError?: () => void,
 ): () => void {
   const source = new EventSource(`${API_BASE}/chapters/crawl/stream?crawlId=${crawlId}`);
 
@@ -96,6 +97,7 @@ export function subscribeToCrawl(
 
   source.onerror = () => {
     source.close();
+    onError?.();
   };
 
   return () => source.close();
