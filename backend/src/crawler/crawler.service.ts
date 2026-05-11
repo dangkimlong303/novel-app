@@ -25,7 +25,12 @@ export class CrawlerService {
   }
 
   private async createBrowser(): Promise<Browser> {
-    return chromium.launch({ headless: true });
+    // Use 'shell' headless mode — harder for sites to detect than default headless
+    // Falls back to headed mode if shell is not available
+    return chromium.launch({
+      headless: false,
+      args: ['--window-position=-2400,-2400'], // Move window off-screen
+    });
   }
 
   /**
@@ -171,35 +176,81 @@ export class CrawlerService {
       await page.goto(chapterUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForTimeout(5000);
 
-      // Step 3: Extract title from CHAPTER_TITLE JS variable
-      const title = await page.evaluate(() => {
-        const jsTitle = (window as any).CHAPTER_TITLE;
-        if (jsTitle) return jsTitle;
-        const h1 = document.querySelector('h1');
-        if (h1?.textContent) return h1.textContent.trim();
-        return document.title;
-      });
+      // Step 3: Extract title — only the chapter name part
+      // CHAPTER_TITLE format: "NUM chapter - Title Name"
+      // We want just "Title Name"
+      const title = await page.evaluate((chapNum: number) => {
+        const raw = (window as any).CHAPTER_TITLE
+          ?? document.querySelector('h1')?.textContent?.trim()
+          ?? document.title;
+
+        // Try to extract just the title after "NUM chapter - "
+        const match = raw.match(/\d+\s+chapter\s*[-–—]\s*(.+)/i);
+        if (match) return match[1].trim();
+
+        // Fallback: remove book name prefix like "Shadow Slave (Novel) - "
+        const cleaned = raw.replace(/^.*?\)\s*[-–—]\s*/, '').trim();
+        return cleaned || `Chapter ${chapNum}`;
+      }, chapterNumber);
       this.logger.log(`Title: ${title}`);
 
-      // Step 4: Wait for .chapter-text content
+      // Step 4: Wait for chapter content to load
+      // The content container is div.chapter-text (may also have extra class like "tfyslo")
+      // Content is loaded dynamically — wait up to 30s
       try {
-        await page.waitForSelector('.chapter-text', { timeout: 15000 });
+        await page.waitForFunction(
+          () => {
+            const el = document.querySelector('.chapter-text, [class*="chapter-text"]');
+            return el && (el.textContent?.trim().length ?? 0) > 100;
+          },
+          { timeout: 30000 },
+        );
+        this.logger.log('.chapter-text found with content');
       } catch {
-        this.logger.warn('.chapter-text not found, trying alternative selectors...');
+        this.logger.warn('.chapter-text content not loaded within 30s');
       }
-      await page.waitForTimeout(2000);
 
-      // Try multiple content selectors
-      let paragraphs = await page.locator('.chapter-text p').allTextContents();
+      // Extract content — try <p> tags first, fall back to full textContent
+      let paragraphs = await page.locator('.chapter-text p, [class*="chapter-text"] p').allTextContents();
       if (paragraphs.length === 0) {
-        paragraphs = await page.locator('.chapter-text').allTextContents();
+        // No <p> tags — get raw text and split by newlines
+        const rawText = await page.evaluate(() => {
+          const el = document.querySelector('.chapter-text, [class*="chapter-text"]');
+          return el?.textContent ?? '';
+        });
+        this.logger.log(`No <p> tags, using raw text (${rawText.length} chars)`);
+        paragraphs = rawText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
       }
-      this.logger.log(`Found ${paragraphs.length} content blocks`);
 
-      const content = paragraphs
+      // Clean content: remove ads, scripts, watermarks
+      const cleaned = paragraphs
         .map((p) => p.trim())
         .filter((p) => p.length > 0)
-        .join('\n\n');
+        .filter((p) => {
+          // Remove JS/ad artifacts
+          if (/^window\.\w+/.test(p)) return false;
+          if (/^Ya\.Context/.test(p)) return false;
+          if (/^var\s+\w+/.test(p)) return false;
+          if (/^\}\s*\)/.test(p)) return false;
+          if (/^["']blockId["']/.test(p)) return false;
+          if (/^["']renderTo["']/.test(p)) return false;
+          if (/pubfuturetag/.test(p)) return false;
+          if (/AdvManager/.test(p)) return false;
+          if (/yandex_rtb/.test(p)) return false;
+          return true;
+        })
+        .map((p) => {
+          // Remove inline watermarks like ~Nоvеl𝕚ght~ or similar site names
+          return p
+            .replace(/~[^~]{2,20}~/g, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+        })
+        .filter((p) => p.length > 0);
+
+      this.logger.log(`Found ${cleaned.length} content blocks (after cleaning)`);
+
+      const content = cleaned.join('\n\n');
 
       if (!content) {
         throw new Error(`No content found for chapter ${chapterNumber}`);
