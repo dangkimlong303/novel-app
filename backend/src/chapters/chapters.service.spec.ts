@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ChaptersService } from './chapters.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CrawlerService } from '../crawler/crawler.service';
 
 describe('ChaptersService', () => {
   let service: ChaptersService;
@@ -11,6 +12,7 @@ describe('ChaptersService', () => {
       count: jest.Mock;
       findUnique: jest.Mock;
       findFirst: jest.Mock;
+      create: jest.Mock;
     };
   };
 
@@ -21,6 +23,7 @@ describe('ChaptersService', () => {
         count: jest.fn(),
         findUnique: jest.fn(),
         findFirst: jest.fn(),
+        create: jest.fn(),
       },
     };
 
@@ -28,6 +31,7 @@ describe('ChaptersService', () => {
       providers: [
         ChaptersService,
         { provide: PrismaService, useValue: prisma },
+        { provide: CrawlerService, useValue: { crawlChapter: jest.fn(), getRandomDelay: () => 0 } },
       ],
     }).compile();
 
@@ -78,8 +82,8 @@ describe('ChaptersService', () => {
         id: 5, chapter_number: 5, title: 'Ch 5', content: 'Text', created_at: new Date(), updated_at: new Date(),
       });
       prisma.chapter.findFirst
-        .mockResolvedValueOnce({ chapter_number: 4 })  // prev
-        .mockResolvedValueOnce({ chapter_number: 6 });  // next
+        .mockResolvedValueOnce({ chapter_number: 4 })
+        .mockResolvedValueOnce({ chapter_number: 6 });
 
       const result = await service.findByNumber(5);
 
@@ -88,13 +92,13 @@ describe('ChaptersService', () => {
       expect(result.chapter_number).toBe(5);
     });
 
-    it('should return null for prev/next when at boundaries', async () => {
+    it('should return null for prev/next at boundaries', async () => {
       prisma.chapter.findUnique.mockResolvedValue({
         id: 1, chapter_number: 1, title: 'Ch 1', content: 'Text', created_at: new Date(), updated_at: new Date(),
       });
       prisma.chapter.findFirst
-        .mockResolvedValueOnce(null)   // no prev
-        .mockResolvedValueOnce(null);  // no next
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
       const result = await service.findByNumber(1);
 
@@ -106,6 +110,24 @@ describe('ChaptersService', () => {
       prisma.chapter.findUnique.mockResolvedValue(null);
 
       await expect(service.findByNumber(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('parseChapterInput', () => {
+    it('should parse chapters array', () => {
+      expect(service.parseChapterInput({ chapters: [1, 2, 3] })).toEqual([1, 2, 3]);
+    });
+
+    it('should parse range string', () => {
+      expect(service.parseChapterInput({ range: '5-8' })).toEqual([5, 6, 7, 8]);
+    });
+
+    it('should parse mixed range string', () => {
+      expect(service.parseChapterInput({ range: '1-3,7,10-12' })).toEqual([1, 2, 3, 7, 10, 11, 12]);
+    });
+
+    it('should return empty array for empty input', () => {
+      expect(service.parseChapterInput({})).toEqual([]);
     });
   });
 });

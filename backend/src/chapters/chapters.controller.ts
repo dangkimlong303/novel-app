@@ -1,5 +1,16 @@
-import { Controller, Get, Param, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Body,
+  Sse,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { ChaptersService } from './chapters.service';
+import { CrawlChaptersDto } from './dto/crawl-chapters.dto';
 
 @Controller('chapters')
 export class ChaptersController {
@@ -11,6 +22,21 @@ export class ChaptersController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.chaptersService.findAll(page, limit);
+  }
+
+  @Post('crawl')
+  startCrawl(@Body() dto: CrawlChaptersDto) {
+    return this.chaptersService.startCrawl(dto);
+  }
+
+  @Sse('crawl/stream')
+  crawlStream(@Query('crawlId') crawlId: string) {
+    return this.chaptersService.getCrawlStream(crawlId);
+  }
+
+  @Post('sync')
+  sync() {
+    return this.chaptersService.startSync();
   }
 
   @Get(':number')
