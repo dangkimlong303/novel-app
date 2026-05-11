@@ -1,0 +1,102 @@
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+export interface ChapterSummary {
+  id: number;
+  chapter_number: number;
+  title: string;
+  created_at: string;
+}
+
+export interface ChapterDetail extends ChapterSummary {
+  content: string;
+  prev: number | null;
+  next: number | null;
+}
+
+export interface PaginatedResponse {
+  data: ChapterSummary[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CrawlResponse {
+  crawlId: string;
+  total?: number;
+  message: string;
+}
+
+export interface CrawlEvent {
+  chapter_number: number;
+  status: 'success' | 'skipped' | 'error';
+  title?: string;
+  message?: string;
+}
+
+export interface CrawlDone {
+  total: number;
+  crawled: number;
+  skipped: number;
+  errors: number;
+  message?: string;
+}
+
+export async function fetchChapters(page = 1, limit = 20): Promise<PaginatedResponse> {
+  const res = await fetch(`${API_BASE}/chapters?page=${page}&limit=${limit}`);
+  if (!res.ok) throw new Error('Failed to fetch chapters');
+  return res.json();
+}
+
+export async function fetchChapter(number: number): Promise<ChapterDetail> {
+  const res = await fetch(`${API_BASE}/chapters/${number}`);
+  if (!res.ok) throw new Error(`Failed to fetch chapter ${number}`);
+  return res.json();
+}
+
+export async function startCrawl(input: string): Promise<CrawlResponse> {
+  const body: { chapters?: number[]; range?: string } = {};
+
+  if (input.includes('-') || input.includes(',')) {
+    body.range = input;
+  } else {
+    body.chapters = [Number(input)];
+  }
+
+  const res = await fetch(`${API_BASE}/chapters/crawl`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('Failed to start crawl');
+  return res.json();
+}
+
+export async function startSync(): Promise<CrawlResponse> {
+  const res = await fetch(`${API_BASE}/chapters/sync`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to start sync');
+  return res.json();
+}
+
+export function subscribeToCrawl(
+  crawlId: string,
+  onProgress: (event: CrawlEvent) => void,
+  onDone: (summary: CrawlDone) => void,
+): () => void {
+  const source = new EventSource(`${API_BASE}/chapters/crawl/stream?crawlId=${crawlId}`);
+
+  source.addEventListener('progress', (e: MessageEvent) => {
+    onProgress(JSON.parse(e.data));
+  });
+
+  source.addEventListener('done', (e: MessageEvent) => {
+    onDone(JSON.parse(e.data));
+    source.close();
+  });
+
+  source.onerror = () => {
+    source.close();
+  };
+
+  return () => source.close();
+}
