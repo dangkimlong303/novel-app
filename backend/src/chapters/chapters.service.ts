@@ -134,7 +134,7 @@ export class ChaptersService {
       }
 
       try {
-        const { title, content } = await this.crawlerService.crawlChapter(num);
+        const { title, content } = await this.crawlerService.crawlChapterViaHttp(num);
         await this.prisma.chapter.create({
           data: { chapter_number: num, title, content },
         });
@@ -172,7 +172,7 @@ export class ChaptersService {
       });
       const maxInDb = latest?.chapter_number ?? 0;
 
-      const latestOnSite = await this.crawlerService.getLatestChapterNumber();
+      const latestOnSite = await this.crawlerService.getLatestChapterNumberViaHttp();
 
       if (latestOnSite > maxInDb) {
         const missing = Array.from(
