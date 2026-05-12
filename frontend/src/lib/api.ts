@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Reading API uses Next.js API routes (relative URL)
+// Crawl/admin API uses the NestJS backend (local only)
+const API_BASE = '/api';
+const BACKEND_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export interface ChapterSummary {
   id: number;
@@ -63,7 +66,7 @@ export async function startCrawl(input: string): Promise<CrawlResponse> {
     body.chapters = [Number(input)];
   }
 
-  const res = await fetch(`${API_BASE}/chapters/crawl`, {
+  const res = await fetch(`${BACKEND_BASE}/chapters/crawl`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -73,7 +76,7 @@ export async function startCrawl(input: string): Promise<CrawlResponse> {
 }
 
 export async function startSync(): Promise<CrawlResponse> {
-  const res = await fetch(`${API_BASE}/chapters/sync`, { method: 'POST' });
+  const res = await fetch(`${BACKEND_BASE}/chapters/sync`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to start sync');
   return res.json();
 }
@@ -84,7 +87,7 @@ export function subscribeToCrawl(
   onDone: (summary: CrawlDone) => void,
   onError?: () => void,
 ): () => void {
-  const source = new EventSource(`${API_BASE}/chapters/crawl/stream?crawlId=${crawlId}`);
+  const source = new EventSource(`${BACKEND_BASE}/chapters/crawl/stream?crawlId=${crawlId}`);
 
   source.addEventListener('progress', (e: MessageEvent) => {
     onProgress(JSON.parse(e.data));
