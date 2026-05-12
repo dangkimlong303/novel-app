@@ -172,9 +172,20 @@ export class CrawlerService {
       }
 
       // Step 2: Navigate to chapter page
+      // First visit book page to establish session (site redirects without cookies)
+      if (!page.url().includes('novelight.net/book/')) {
+        this.logger.log('Establishing session via book page...');
+        await page.goto('https://novelight.net/book/shadow-slave-novel', {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+        await page.waitForTimeout(3000);
+      }
+
       this.logger.log(`Crawling: ${chapterUrl}`);
       await page.goto(chapterUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForTimeout(5000);
+      this.logger.log(`Page URL: ${page.url()}`);
 
       // Step 3: Extract title — only the chapter name part
       // CHAPTER_TITLE format: "NUM chapter - Title Name"
@@ -210,45 +221,53 @@ export class CrawlerService {
         this.logger.warn('.chapter-text content not loaded within 30s');
       }
 
-      // Extract content — try <p> tags first, fall back to full textContent
-      let paragraphs = await page.locator('.chapter-text p, [class*="chapter-text"] p').allTextContents();
-      if (paragraphs.length === 0) {
-        // No <p> tags — get raw text and split by newlines
-        const rawText = await page.evaluate(() => {
-          const el = document.querySelector('.chapter-text, [class*="chapter-text"]');
-          return el?.textContent ?? '';
-        });
-        this.logger.log(`No <p> tags, using raw text (${rawText.length} chars)`);
-        paragraphs = rawText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-      }
+      // Extract content using innerText — preserves line breaks from <br>, <p>, <div>
+      // (textContent ignores formatting; innerText renders as visually displayed)
+      const rawParagraphs = await page.evaluate(() => {
+        const el = document.querySelector('.chapter-text, [class*="chapter-text"]') as HTMLElement;
+        if (!el) return [];
+
+        // Remove script/style/ad elements before extracting text
+        el.querySelectorAll('script, style, noscript, ins, iframe').forEach((s) => s.remove());
+
+        // innerText preserves visual line breaks
+        return el.innerText
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0);
+      });
+
+      this.logger.log(`Raw paragraphs extracted: ${rawParagraphs.length}`);
 
       // Clean content: remove ads, scripts, watermarks
-      const cleaned = paragraphs
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0)
+      const cleaned = rawParagraphs
         .filter((p) => {
           // Remove JS/ad artifacts
           if (/^window\.\w+/.test(p)) return false;
           if (/^Ya\.Context/.test(p)) return false;
           if (/^var\s+\w+/.test(p)) return false;
           if (/^\}\s*\)/.test(p)) return false;
-          if (/^["']blockId["']/.test(p)) return false;
-          if (/^["']renderTo["']/.test(p)) return false;
+          if (/^["']\w+["']\s*:/.test(p)) return false;
           if (/pubfuturetag/.test(p)) return false;
           if (/AdvManager/.test(p)) return false;
           if (/yandex_rtb/.test(p)) return false;
+          if (/\.push\s*\(\s*\{/.test(p)) return false;
+          if (/^\}\s*$/.test(p)) return false;
+          if (/^\)\s*$/.test(p)) return false;
           return true;
         })
         .map((p) => {
-          // Remove inline watermarks like ~Nоvеl𝕚ght~ or similar site names
+          // Remove watermarks: ~text~, ✪ text ✪, ★ text ★, and similar
           return p
-            .replace(/~[^~]{2,20}~/g, '')
+            .replace(/~[^~]{2,30}~/g, '')
+            .replace(/[✪★☆⭐🌟][^✪★☆⭐🌟]{2,40}[✪★☆⭐🌟](\s*\([^)]*\))?/g, '')
+            .replace(/\(Official version\)/gi, '')
             .replace(/\s{2,}/g, ' ')
             .trim();
         })
         .filter((p) => p.length > 0);
 
-      this.logger.log(`Found ${cleaned.length} content blocks (after cleaning)`);
+      this.logger.log(`Found ${cleaned.length} paragraphs (after cleaning)`);
 
       const content = cleaned.join('\n\n');
 

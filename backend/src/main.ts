@@ -6,13 +6,16 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({ origin: 'http://localhost:3000' });
+  const port = process.env.PORT || 3001;
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+
+  app.enableCors({ origin: corsOrigin });
   app.use(compression());
   app.useGlobalPipes(
     new ValidationPipe({ transform: true, whitelist: true }),
   );
 
-  await app.listen(3001);
-  console.log('Backend running on http://localhost:3001');
+  await app.listen(port);
+  console.log(`Backend running on http://localhost:${port}`);
 }
 bootstrap();
