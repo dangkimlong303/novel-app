@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { fetchChapters, PaginatedResponse } from '@/lib/api';
 
@@ -8,65 +8,135 @@ export default function ChapterList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get('page') || '1');
+  const currentSort = (searchParams.get('sort') || 'asc') as 'asc' | 'desc';
+  const currentSearch = searchParams.get('search') || '';
 
   const [data, setData] = useState<PaginatedResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState(currentSearch);
 
   useEffect(() => {
     setLoading(true);
-    fetchChapters(currentPage)
+    fetchChapters(currentPage, 20, currentSort, currentSearch)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [currentPage]);
+  }, [currentPage, currentSort, currentSearch]);
 
-  if (loading) return <div className="text-center py-10 text-gray-500">Loading...</div>;
-  if (!data || data.data.length === 0) {
-    return <div className="text-center py-10 text-gray-500">No chapters found. Use the Admin panel to crawl chapters.</div>;
-  }
+  const buildUrl = useCallback(
+    (params: { page?: number; sort?: string; search?: string }) => {
+      const p = new URLSearchParams();
+      const page = params.page ?? currentPage;
+      const sort = params.sort ?? currentSort;
+      const search = params.search ?? currentSearch;
+      if (page > 1) p.set('page', String(page));
+      if (sort !== 'asc') p.set('sort', sort);
+      if (search) p.set('search', search);
+      const qs = p.toString();
+      return qs ? `/?${qs}` : '/';
+    },
+    [currentPage, currentSort, currentSearch],
+  );
+
+  const handleSearch = () => {
+    router.push(buildUrl({ page: 1, search: searchInput }));
+  };
+
+  const handleClear = () => {
+    setSearchInput('');
+    router.push(buildUrl({ page: 1, search: '' }));
+  };
+
+  const toggleSort = () => {
+    const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+    router.push(buildUrl({ page: 1, sort: newSort }));
+  };
 
   return (
     <div>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b text-left text-sm text-gray-500">
-            <th className="py-2 pr-4 w-20">#</th>
-            <th className="py-2">Title</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.data.map((ch) => (
-            <tr
-              key={ch.id}
-              className="border-b hover:bg-gray-100 cursor-pointer"
-              onClick={() => router.push(`/chapters/${ch.chapter_number}`)}
-            >
-              <td className="py-3 pr-4 text-gray-500">{ch.chapter_number}</td>
-              <td className="py-3">{ch.title}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="flex justify-center items-center gap-4 mt-6">
+      {/* Search bar */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          placeholder="Search by chapter number or title..."
+          className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
         <button
-          onClick={() => router.push(`/?page=${currentPage - 1}`)}
-          disabled={currentPage <= 1}
-          className="px-4 py-2 border rounded disabled:opacity-30 hover:bg-gray-100"
+          onClick={handleSearch}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Previous
+          Search
         </button>
-        <span className="text-sm text-gray-600">
-          Page {data.page} of {data.totalPages}
-        </span>
-        <button
-          onClick={() => router.push(`/?page=${currentPage + 1}`)}
-          disabled={currentPage >= data.totalPages}
-          className="px-4 py-2 border rounded disabled:opacity-30 hover:bg-gray-100"
-        >
-          Next
-        </button>
+        {currentSearch && (
+          <button
+            onClick={handleClear}
+            className="px-4 py-2 border rounded hover:bg-gray-100"
+          >
+            Clear
+          </button>
+        )}
       </div>
+
+      {loading && <div className="text-center py-10 text-gray-500">Loading...</div>}
+
+      {!loading && (!data || data.data.length === 0) && (
+        <div className="text-center py-10 text-gray-500">
+          {currentSearch ? 'No chapters found for your search.' : 'No chapters found. Use the Admin panel to crawl chapters.'}
+        </div>
+      )}
+
+      {!loading && data && data.data.length > 0 && (
+        <>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b text-left text-sm text-gray-500">
+                <th
+                  className="py-2 pr-4 w-20 cursor-pointer hover:text-gray-900 select-none"
+                  onClick={toggleSort}
+                >
+                  # {currentSort === 'asc' ? '↑' : '↓'}
+                </th>
+                <th className="py-2">Title</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.data.map((ch) => (
+                <tr
+                  key={ch.id}
+                  className="border-b hover:bg-gray-100 cursor-pointer"
+                  onClick={() => router.push(`/chapters/${ch.chapter_number}`)}
+                >
+                  <td className="py-3 pr-4 text-gray-500">{ch.chapter_number}</td>
+                  <td className="py-3">{ch.title}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="flex justify-center items-center gap-4 mt-6">
+            <button
+              onClick={() => router.push(buildUrl({ page: currentPage - 1 }))}
+              disabled={currentPage <= 1}
+              className="px-4 py-2 border rounded disabled:opacity-30 hover:bg-gray-100"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {data.page} of {data.totalPages}
+            </span>
+            <button
+              onClick={() => router.push(buildUrl({ page: currentPage + 1 }))}
+              disabled={currentPage >= data.totalPages}
+              className="px-4 py-2 border rounded disabled:opacity-30 hover:bg-gray-100"
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

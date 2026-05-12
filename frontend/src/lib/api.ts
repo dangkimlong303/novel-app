@@ -45,8 +45,15 @@ export interface CrawlDone {
   message?: string;
 }
 
-export async function fetchChapters(page = 1, limit = 20): Promise<PaginatedResponse> {
-  const res = await fetch(`${API_BASE}/chapters?page=${page}&limit=${limit}`);
+export async function fetchChapters(
+  page = 1,
+  limit = 20,
+  sort: 'asc' | 'desc' = 'asc',
+  search = '',
+): Promise<PaginatedResponse> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), sort });
+  if (search) params.set('search', search);
+  const res = await fetch(`${API_BASE}/chapters?${params}`);
   if (!res.ok) throw new Error('Failed to fetch chapters');
   return res.json();
 }
