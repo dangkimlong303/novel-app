@@ -13,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <nav className="bg-white shadow-sm border-b">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-6">
             <a href="/" className="font-bold text-lg">Novel Reader</a>
-            <a href="/admin" className="text-sm text-gray-600 hover:text-gray-900">Admin</a>
+            {process.env.NEXT_PUBLIC_ADMIN_ENABLED === 'true' && (
+              <a href="/admin" className="text-sm text-gray-600 hover:text-gray-900">Admin</a>
+            )}
           </div>
         </nav>
         <main className="max-w-5xl mx-auto px-4 py-6">{children}</main>
