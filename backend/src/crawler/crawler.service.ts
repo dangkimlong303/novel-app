@@ -54,57 +54,88 @@ export class CrawlerService {
    * Strategy: fetch page=60 (oldest) first to get the range, then binary search if needed.
    * Simpler: just try pages from 60 down until we find our chapter.
    */
+  /**
+   * Parse chapter links from pagination HTML response.
+   */
+  private parseChapterLinksFromHtml(html: string): Array<{ num: number; url: string }> {
+    const results: Array<{ num: number; url: string }> = [];
+    const linkRegex = /href="\/book\/chapter\/(\d+)"[\s\S]*?(\d+)\s+chapter\s*-\s*<span>([^<]+)<\/span>/g;
+    let match: RegExpExecArray | null;
+    while ((match = linkRegex.exec(html)) !== null) {
+      results.push({
+        num: parseInt(match[2], 10),
+        url: `${BASE_URL}/book/chapter/${match[1]}`,
+      });
+    }
+    return results;
+  }
+
+  /**
+   * Fetch a pagination page and cache the chapter links.
+   * Returns the chapter numbers found on that page.
+   */
+  private async fetchPaginationPage(pageNum: number): Promise<number[]> {
+    const url = `${BASE_URL}/book/ajax/chapter-pagination?book_id=${BOOK_ID}&page=${pageNum}`;
+    this.logger.log(`[HTTP] Fetching page ${pageNum}: ${url}`);
+
+    const res = await fetch(url, { headers: this.httpHeaders() });
+    if (!res.ok) {
+      this.logger.warn(`[HTTP] Pagination API returned ${res.status} for page ${pageNum}`);
+      return [];
+    }
+
+    const data = await res.json() as { html: string };
+    const links = this.parseChapterLinksFromHtml(data.html);
+
+    for (const { num, url: chapterUrl } of links) {
+      this.chapterIndex.set(num, chapterUrl);
+    }
+
+    const nums = links.map((l) => l.num);
+    if (nums.length > 0) {
+      this.logger.log(`[HTTP] Page ${pageNum}: chapters ${Math.min(...nums)}-${Math.max(...nums)} (${nums.length} links)`);
+    } else {
+      this.logger.log(`[HTTP] Page ${pageNum}: empty`);
+    }
+    return nums;
+  }
+
   private async buildIndexViaHttp(chapterNumber: number): Promise<void> {
-    // Try each page from the oldest (60) to newest (1) to find the target chapter
-    // Each page contains ~50 chapters. We can calculate approximately which page to try.
-    // Page 60 = chapters 1-42, page 59 = chapters 43-92, etc.
-    // But the exact mapping may vary, so we try a few pages.
+    // Step 1: Fetch page 1 (newest) to discover the latest chapter and calculate total pages
+    const newestChapters = await this.fetchPaginationPage(1);
+    if (this.chapterIndex.has(chapterNumber)) return;
 
-    // Start with page 60 (oldest) for low chapter numbers, page 1 for high
-    const startPage = chapterNumber <= 50 ? 60 : 1;
-    const direction = chapterNumber <= 50 ? -1 : 1;
+    const latestChapter = newestChapters.length > 0 ? Math.max(...newestChapters) : 3000;
+    const chaptersPerPage = Math.max(newestChapters.length, 50);
+    const totalPages = Math.ceil(latestChapter / chaptersPerPage);
 
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const pageNum = startPage + attempt * direction;
-      if (pageNum < 1 || pageNum > 60) break;
+    this.logger.log(`[HTTP] Latest: ${latestChapter}, ~${chaptersPerPage}/page, ~${totalPages} pages`);
 
-      const url = `${BASE_URL}/book/ajax/chapter-pagination?book_id=${BOOK_ID}&page=${pageNum}`;
-      this.logger.log(`[HTTP] Fetching chapter index: ${url}`);
+    // Step 2: Estimate which page contains our chapter
+    // Page 1 = newest, page N = oldest. Chapter 1 is on the last page.
+    const estimatedPage = Math.max(1, Math.min(totalPages,
+      totalPages - Math.floor((chapterNumber - 1) / chaptersPerPage),
+    ));
+    this.logger.log(`[HTTP] Estimated page for chapter ${chapterNumber}: ${estimatedPage}`);
 
-      const res = await fetch(url, { headers: this.httpHeaders() });
-      if (!res.ok) {
-        this.logger.warn(`[HTTP] Pagination API returned ${res.status}`);
-        continue;
-      }
+    // Step 3: Try estimated page, then nearby pages (spread outward)
+    const pagesToTry = [estimatedPage];
+    for (let offset = 1; offset <= 3; offset++) {
+      if (estimatedPage + offset <= totalPages) pagesToTry.push(estimatedPage + offset);
+      if (estimatedPage - offset >= 1) pagesToTry.push(estimatedPage - offset);
+    }
 
-      const data = await res.json() as { html: string };
-      const html = data.html;
-
-      // Parse chapter links from HTML
-      // Format: <a href="/book/chapter/ID" class="chapter">
-      //           <div class="title">NUM chapter - <span>Title</span></div>
-      const linkRegex = /href="\/book\/chapter\/(\d+)"[\s\S]*?(\d+)\s+chapter\s*-\s*<span>([^<]+)<\/span>/g;
-      let match: RegExpExecArray | null;
-      let foundTarget = false;
-
-      while ((match = linkRegex.exec(html)) !== null) {
-        const chapterId = match[1];
-        const num = parseInt(match[2], 10);
-        const chapterUrl = `${BASE_URL}/book/chapter/${chapterId}`;
-        this.chapterIndex.set(num, chapterUrl);
-        if (num === chapterNumber) foundTarget = true;
-      }
-
-      this.logger.log(`[HTTP] Page ${pageNum}: extracted links, total cached: ${this.chapterIndex.size}`);
-
-      if (foundTarget) {
-        this.logger.log(`[HTTP] Found chapter ${chapterNumber} in page ${pageNum}`);
+    for (const pageNum of pagesToTry) {
+      if (pageNum === 1) continue; // Already fetched
+      await this.fetchPaginationPage(pageNum);
+      if (this.chapterIndex.has(chapterNumber)) {
+        this.logger.log(`[HTTP] Found chapter ${chapterNumber}`);
         return;
       }
     }
 
     if (!this.chapterIndex.has(chapterNumber)) {
-      throw new Error(`[HTTP] Could not find chapter ${chapterNumber} in pagination API`);
+      throw new Error(`[HTTP] Could not find chapter ${chapterNumber} in pagination API (tried pages: ${pagesToTry.join(', ')})`);
     }
   }
 
