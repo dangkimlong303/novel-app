@@ -46,21 +46,35 @@ export interface CrawlDone {
 }
 
 export async function fetchChapters(
-  page = 1,
-  limit = 20,
-  sort: 'asc' | 'desc' = 'desc',
-  search = '',
+  page: number,
+  limit: number,
+  sort: 'asc' | 'desc',
+  search: string,
 ): Promise<PaginatedResponse> {
-  const params = new URLSearchParams({ page: String(page), limit: String(limit), sort });
+  var params = new URLSearchParams({ page: String(page), limit: String(limit), sort: sort });
   if (search) params.set('search', search);
-  const res = await fetch(`${API_BASE}/chapters?${params}`);
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 10000);
+  var res;
+  try {
+    res = await fetch(API_BASE + '/chapters?' + params.toString(), { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error('Failed to fetch chapters');
   return res.json();
 }
 
 export async function fetchChapter(number: number): Promise<ChapterDetail> {
-  const res = await fetch(`${API_BASE}/chapters/${number}`);
-  if (!res.ok) throw new Error(`Failed to fetch chapter ${number}`);
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 10000);
+  var res;
+  try {
+    res = await fetch(API_BASE + '/chapters/' + number, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error('Failed to fetch chapter ' + number);
   return res.json();
 }
 

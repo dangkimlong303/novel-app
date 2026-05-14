@@ -13,22 +13,24 @@ export default function ChapterList() {
 
   const [data, setData] = useState<PaginatedResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState(currentSearch);
 
   useEffect(() => {
     setLoading(true);
+    setError('');
     fetchChapters(currentPage, 20, currentSort, currentSearch)
       .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch(function(err) { setError(err.message || 'Failed to load chapters'); })
+      .finally(function() { setLoading(false); });
   }, [currentPage, currentSort, currentSearch]);
 
   const buildUrl = useCallback(
     (params: { page?: number; sort?: string; search?: string }) => {
       const p = new URLSearchParams();
-      const page = params.page ?? currentPage;
-      const sort = params.sort ?? currentSort;
-      const search = params.search ?? currentSearch;
+      const page = params.page !== undefined ? params.page : currentPage;
+      const sort = params.sort !== undefined ? params.sort : currentSort;
+      const search = params.search !== undefined ? params.search : currentSearch;
       if (page > 1) p.set('page', String(page));
       if (sort !== 'asc') p.set('sort', sort);
       if (search) p.set('search', search);
@@ -82,7 +84,11 @@ export default function ChapterList() {
 
       {loading && <div className="text-center py-10 text-gray-500">Loading...</div>}
 
-      {!loading && (!data || data.data.length === 0) && (
+      {!loading && error && (
+        <div className="text-center py-10 text-red-500">{error}</div>
+      )}
+
+      {!loading && !error && (!data || data.data.length === 0) && (
         <div className="text-center py-10 text-gray-500">
           {currentSearch ? 'No chapters found for your search.' : 'No chapters found. Use the Admin panel to crawl chapters.'}
         </div>
