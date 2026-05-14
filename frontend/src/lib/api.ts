@@ -48,7 +48,7 @@ export interface CrawlDone {
 export async function fetchChapters(
   page = 1,
   limit = 20,
-  sort: 'asc' | 'desc' = 'asc',
+  sort: 'asc' | 'desc' = 'desc',
   search = '',
 ): Promise<PaginatedResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), sort });

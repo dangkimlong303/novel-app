@@ -8,7 +8,7 @@ export default function ChapterList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get('page') || '1');
-  const currentSort = (searchParams.get('sort') || 'asc') as 'asc' | 'desc';
+  const currentSort = (searchParams.get('sort') || 'desc') as 'asc' | 'desc';
   const currentSearch = searchParams.get('search') || '';
 
   const [data, setData] = useState<PaginatedResponse | null>(null);
