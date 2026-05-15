@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import ChapterSearch from '@/components/ChapterSearch';
+import NovelHeader from '@/components/NovelHeader';
 
 interface PageProps {
   searchParams: Promise<{ page?: string; sort?: string; search?: string }>;
@@ -54,7 +55,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Shadow Slave — Chapters</h1>
+      <NovelHeader totalChapters={total} />
 
       <ChapterSearch currentSearch={search} />
 
