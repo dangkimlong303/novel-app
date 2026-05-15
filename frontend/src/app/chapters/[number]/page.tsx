@@ -9,6 +9,29 @@ interface PageProps {
   params: Promise<{ number: string }>;
 }
 
+export async function generateMetadata({ params }: PageProps) {
+  const { number } = await params;
+  const chapterNumber = parseInt(number, 10);
+  if (isNaN(chapterNumber)) return {};
+
+  const chapter = await prisma.chapter.findUnique({
+    where: { chapter_number: chapterNumber },
+    select: { title: true, content: true },
+  });
+  if (!chapter) return {};
+
+  var description = chapter.content
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 160);
+
+  return {
+    title: 'Ch.' + chapterNumber + ' — ' + chapter.title,
+    description: description,
+  };
+}
+
 export default async function ChapterPage({ params }: PageProps) {
   const { number } = await params;
   const chapterNumber = parseInt(number, 10);

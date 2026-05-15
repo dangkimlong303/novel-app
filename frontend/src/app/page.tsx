@@ -8,6 +8,24 @@ interface PageProps {
   searchParams: Promise<{ page?: string; sort?: string; search?: string }>;
 }
 
+export async function generateMetadata({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const search = (params.search || '').trim();
+  const total = await prisma.chapter.count();
+
+  if (search) {
+    return {
+      title: 'Search: ' + search + ' | Shadow Slave',
+      description: 'Search results for "' + search + '" in Shadow Slave novel.',
+    };
+  }
+
+  return {
+    title: 'Shadow Slave — Read Free Online',
+    description: 'Read Shadow Slave novel online for free. ' + total.toLocaleString() + ' chapters available.',
+  };
+}
+
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const page = parseInt(params.page || '1', 10);

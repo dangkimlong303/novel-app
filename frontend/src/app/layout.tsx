@@ -4,8 +4,14 @@ import DarkModeInit from '@/components/DarkModeInit';
 import DarkModeToggle from '@/components/DarkModeToggle';
 
 export const metadata: Metadata = {
-  title: 'Novel Reader',
-  description: 'Read Shadow Slave chapters',
+  title: {
+    default: 'Shadow Slave — Read Free Online | Novel Reader',
+    template: '%s | Novel Reader',
+  },
+  description: 'Read Shadow Slave novel online for free.',
+  openGraph: {
+    images: ['/cover.jpg'],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
