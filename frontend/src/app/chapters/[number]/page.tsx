@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import ReaderClient from '@/components/ReaderClient';
 import KeyboardNav from '@/components/KeyboardNav';
+import ShareButton from '@/components/ShareButton';
 
 interface PageProps {
   params: Promise<{ number: string }>;
@@ -68,6 +69,11 @@ export default async function ChapterPage({ params }: PageProps) {
           ) : (
             <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
           )}
+        </div>
+
+        {/* Share */}
+        <div className="flex justify-end mb-2">
+          <ShareButton />
         </div>
 
         {/* Chapter content */}
