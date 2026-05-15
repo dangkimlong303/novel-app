@@ -53,23 +53,23 @@ export default async function ChapterPage({ params }: PageProps) {
         {/* Navigation — top */}
         <div className="flex justify-between items-center py-4">
           {prevNum ? (
-            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+            <Link href={'/chapters/' + prevNum} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Previous Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
+            <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
           )}
           {nextNum ? (
-            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+            <Link href={'/chapters/' + nextNum} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Next Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
+            <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
           )}
         </div>
 
         {/* Chapter content */}
-        <article className="rounded-lg p-8 bg-white text-gray-900" data-chapter-content>
+        <article className="rounded-lg p-4 md:p-8 bg-white text-gray-900" data-chapter-content>
           <h1 className="text-2xl font-bold mb-8">{chapter.title}</h1>
           {paragraphs.map(function(p, i) {
             return <p key={i} className="mb-4">{p}</p>;
@@ -79,18 +79,18 @@ export default async function ChapterPage({ params }: PageProps) {
         {/* Navigation — bottom */}
         <div className="flex justify-between items-center py-4">
           {prevNum ? (
-            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+            <Link href={'/chapters/' + prevNum} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Previous Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
+            <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
           )}
           {nextNum ? (
-            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+            <Link href={'/chapters/' + nextNum} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Next Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
+            <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
           )}
         </div>
       </ReaderClient>

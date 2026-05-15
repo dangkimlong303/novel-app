@@ -65,7 +65,25 @@ export default async function HomePage({ searchParams }: PageProps) {
         </div>
       ) : (
         <>
-          <table className="w-full border-collapse">
+          {/* Mobile list view */}
+          <div className="md:hidden space-y-1">
+            {data.map(function(ch) {
+              return (
+                <Link
+                  key={ch.id}
+                  href={'/chapters/' + ch.chapter_number}
+                  className="block py-3 px-2 border-b dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <span className="text-gray-500 dark:text-gray-400">Ch.{ch.chapter_number}</span>
+                  <span className="mx-2">—</span>
+                  <span>{ch.title}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Desktop table view */}
+          <table className="hidden md:table w-full border-collapse">
             <thead>
               <tr className="border-b dark:border-gray-800 text-left text-sm text-gray-500">
                 <th className="py-2 pr-4 w-20">
@@ -92,23 +110,30 @@ export default async function HomePage({ searchParams }: PageProps) {
             </tbody>
           </table>
 
-          <div className="flex justify-center items-center gap-4 mt-6">
+          {/* Sort link for mobile */}
+          <div className="md:hidden flex justify-end mt-2 mb-2">
+            <Link href={buildUrl({ page: 1, sort: nextSort })} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+              Sort {sort === 'asc' ? '↑ Oldest' : '↓ Newest'}
+            </Link>
+          </div>
+
+          <div className="flex justify-center items-center gap-4 mt-4 md:mt-6">
             {page > 1 ? (
-              <Link href={buildUrl({ page: page - 1 })} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+              <Link href={buildUrl({ page: page - 1 })} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
                 Previous
               </Link>
             ) : (
-              <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Previous</span>
+              <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Previous</span>
             )}
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
               Page {page} of {totalPages}
             </span>
             {page < totalPages ? (
-              <Link href={buildUrl({ page: page + 1 })} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
+              <Link href={buildUrl({ page: page + 1 })} className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
                 Next
               </Link>
             ) : (
-              <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Next</span>
+              <span className="px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base border rounded opacity-30 dark:border-gray-700">Next</span>
             )}
           </div>
         </>
