@@ -32,7 +32,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { chapter_number: sort },
-      select: { id: true, chapter_number: true, title: true },
+      select: { id: true, chapter_number: true, title: true, content: true },
     }),
     prisma.chapter.count({ where }),
   ]);
@@ -51,6 +51,11 @@ export default async function HomePage({ searchParams }: PageProps) {
     if (q) p.set('search', q);
     const qs = p.toString();
     return qs ? '/?' + qs : '/';
+  }
+
+  function readingTime(content: string): number {
+    var words = content.split(/\s+/).length;
+    return Math.max(1, Math.ceil(words / 200));
   }
 
   return (
@@ -77,6 +82,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                   <span className="text-gray-500 dark:text-gray-400">Ch.{ch.chapter_number}</span>
                   <span className="mx-2">—</span>
                   <span>{ch.title}</span>
+                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">· {readingTime(ch.content)} min</span>
                 </Link>
               );
             })}
@@ -92,6 +98,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                   </Link>
                 </th>
                 <th className="py-2">Title</th>
+                <th className="py-2 w-20 text-right">Time</th>
               </tr>
             </thead>
             <tbody>
@@ -104,6 +111,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                         {ch.title}
                       </Link>
                     </td>
+                    <td className="py-3 text-right text-sm text-gray-400 dark:text-gray-500">{readingTime(ch.content)} min</td>
                   </tr>
                 );
               })}

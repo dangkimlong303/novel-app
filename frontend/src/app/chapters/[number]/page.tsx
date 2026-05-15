@@ -38,6 +38,8 @@ export default async function ChapterPage({ params }: PageProps) {
   ]);
 
   const paragraphs = chapter.content.split('\n\n').filter(function(p) { return p.trim(); });
+  var wordCount = chapter.content.split(/\s+/).length;
+  var readTime = Math.max(1, Math.ceil(wordCount / 200));
   const prevNum = prev ? prev.chapter_number : null;
   const nextNum = next ? next.chapter_number : null;
 
@@ -70,7 +72,8 @@ export default async function ChapterPage({ params }: PageProps) {
 
         {/* Chapter content */}
         <article className="rounded-lg p-4 md:p-8 bg-white text-gray-900" data-chapter-content>
-          <h1 className="text-2xl font-bold mb-8">{chapter.title}</h1>
+          <h1 className="text-2xl font-bold mb-2">{chapter.title}</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">~{readTime} min read</p>
           {paragraphs.map(function(p, i) {
             return <p key={i} className="mb-4">{p}</p>;
           })}
