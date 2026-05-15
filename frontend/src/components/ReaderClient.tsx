@@ -43,27 +43,27 @@ export default function ReaderClient({ children }: { children: React.ReactNode }
       <div className="mb-4">
         <button
           onClick={function() { setOpen(!open); }}
-          className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
+          className="text-sm px-3 py-1 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
         >
           {open ? 'Hide Settings' : 'Settings'}
         </button>
 
         {open && (
-          <div className="mt-3 p-4 border rounded-lg bg-white flex flex-wrap gap-6 items-center">
+          <div className="mt-3 p-4 border rounded-lg bg-white flex flex-wrap gap-6 items-center dark:bg-gray-900 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Font Size:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Font Size:</span>
               <button
                 onClick={function() { updateSettings({ fontSize: Math.max(14, settings.fontSize - 2), theme: settings.theme }); }}
-                className="w-8 h-8 border rounded flex items-center justify-center hover:bg-gray-100"
+                className="w-8 h-8 border rounded flex items-center justify-center hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
               >-</button>
               <span className="text-sm w-8 text-center">{settings.fontSize}</span>
               <button
                 onClick={function() { updateSettings({ fontSize: Math.min(24, settings.fontSize + 2), theme: settings.theme }); }}
-                className="w-8 h-8 border rounded flex items-center justify-center hover:bg-gray-100"
+                className="w-8 h-8 border rounded flex items-center justify-center hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
               >+</button>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Theme:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Theme:</span>
               {['white', 'sepia', 'dark'].map(function(t) {
                 var s = themeStyles[t];
                 return (

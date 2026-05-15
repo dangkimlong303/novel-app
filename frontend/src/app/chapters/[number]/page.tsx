@@ -46,18 +46,18 @@ export default async function ChapterPage({ params }: PageProps) {
         {/* Navigation — top */}
         <div className="flex justify-between items-center py-4">
           {prevNum ? (
-            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100">
+            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Previous Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30">Previous Chapter</span>
+            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
           )}
           {nextNum ? (
-            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100">
+            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Next Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30">Next Chapter</span>
+            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
           )}
         </div>
 
@@ -72,18 +72,18 @@ export default async function ChapterPage({ params }: PageProps) {
         {/* Navigation — bottom */}
         <div className="flex justify-between items-center py-4">
           {prevNum ? (
-            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100">
+            <Link href={'/chapters/' + prevNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Previous Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30">Previous Chapter</span>
+            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Previous Chapter</span>
           )}
           {nextNum ? (
-            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100">
+            <Link href={'/chapters/' + nextNum} className="px-4 py-2 border rounded hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">
               Next Chapter
             </Link>
           ) : (
-            <span className="px-4 py-2 border rounded opacity-30">Next Chapter</span>
+            <span className="px-4 py-2 border rounded opacity-30 dark:border-gray-700">Next Chapter</span>
           )}
         </div>
       </ReaderClient>
