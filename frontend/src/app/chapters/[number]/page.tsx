@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import ReaderClient from '@/components/ReaderClient';
+import KeyboardNav from '@/components/KeyboardNav';
 
 interface PageProps {
   params: Promise<{ number: string }>;
@@ -42,6 +43,12 @@ export default async function ChapterPage({ params }: PageProps) {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <KeyboardNav
+        chapterNumber={chapterNumber}
+        chapterTitle={chapter.title}
+        prev={prevNum}
+        next={nextNum}
+      />
       <ReaderClient>
         {/* Navigation — top */}
         <div className="flex justify-between items-center py-4">
