@@ -39,6 +39,11 @@ export class ChaptersController {
     return this.chaptersService.startSync();
   }
 
+  @Post('crawl/allnovel')
+  crawlFromAllnovel(@Body() body: { chapters: number[] }) {
+    return this.chaptersService.crawlFromAllnovel(body.chapters);
+  }
+
   @Get(':number')
   findByNumber(@Param('number', ParseIntPipe) number: number) {
     return this.chaptersService.findByNumber(number);

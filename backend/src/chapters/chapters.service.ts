@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrawlerService } from '../crawler/crawler.service';
+import { NovelfullService } from '../crawler/novelfull.service';
+import { AllnovelService } from '../crawler/allnovel.service';
 import { CrawlChaptersDto } from './dto/crawl-chapters.dto';
 
 export interface SseEvent {
@@ -17,7 +19,41 @@ export class ChaptersService {
   constructor(
     private prisma: PrismaService,
     private crawlerService: CrawlerService,
+    private novelfullService: NovelfullService,
+    private allnovelService: AllnovelService,
   ) {}
+
+  /**
+   * Crawl specific chapters from allnovel.org (backup source).
+   * Used for chapters missing from novelight.net, or as a backup if novelight goes down.
+   */
+  async crawlFromAllnovel(chapters: number[]) {
+    const results: Array<{ chapter: number; status: string; title?: string; error?: string }> = [];
+
+    for (const num of chapters) {
+      const existing = await this.prisma.chapter.findUnique({ where: { chapter_number: num } });
+      if (existing) {
+        this.logger.log(`Chapter ${num} already exists, skipping`);
+        results.push({ chapter: num, status: 'skipped' });
+        continue;
+      }
+
+      try {
+        const { title, content } = await this.allnovelService.crawlChapter(num);
+        await this.prisma.chapter.create({ data: { chapter_number: num, title, content } });
+        this.logger.log(`Chapter ${num} crawled from allnovel: "${title}"`);
+        results.push({ chapter: num, status: 'success', title });
+      } catch (error) {
+        this.logger.error(`Failed to crawl chapter ${num} from allnovel: ${error.message}`);
+        results.push({ chapter: num, status: 'error', error: error.message });
+      }
+
+      // Delay between requests (be polite)
+      await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+    }
+
+    return results;
+  }
 
   async findAll(page: number, limit: number) {
     const [data, total] = await Promise.all([
