@@ -2,14 +2,15 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrawlerService } from '../crawler/crawler.service';
-import { NovelfullService } from '../crawler/novelfull.service';
 import { AllnovelService } from '../crawler/allnovel.service';
-import { CrawlChaptersDto } from './dto/crawl-chapters.dto';
+import { CrawlChaptersDto, CrawlSource } from './dto/crawl-chapters.dto';
 
 export interface SseEvent {
   data: string | object;
   type?: string;
 }
+
+type ChapterFetcher = (chapterNumber: number) => Promise<{ title: string; content: string }>;
 
 @Injectable()
 export class ChaptersService {
@@ -19,41 +20,12 @@ export class ChaptersService {
   constructor(
     private prisma: PrismaService,
     private crawlerService: CrawlerService,
-    private novelfullService: NovelfullService,
     private allnovelService: AllnovelService,
   ) {}
 
-  /**
-   * Crawl specific chapters from allnovel.org (backup source).
-   * Used for chapters missing from novelight.net, or as a backup if novelight goes down.
-   */
-  async crawlFromAllnovel(chapters: number[]) {
-    const results: Array<{ chapter: number; status: string; title?: string; error?: string }> = [];
-
-    for (const num of chapters) {
-      const existing = await this.prisma.chapter.findUnique({ where: { chapter_number: num } });
-      if (existing) {
-        this.logger.log(`Chapter ${num} already exists, skipping`);
-        results.push({ chapter: num, status: 'skipped' });
-        continue;
-      }
-
-      try {
-        const { title, content } = await this.allnovelService.crawlChapter(num);
-        await this.prisma.chapter.create({ data: { chapter_number: num, title, content } });
-        this.logger.log(`Chapter ${num} crawled from allnovel: "${title}"`);
-        results.push({ chapter: num, status: 'success', title });
-      } catch (error) {
-        this.logger.error(`Failed to crawl chapter ${num} from allnovel: ${error.message}`);
-        results.push({ chapter: num, status: 'error', error: error.message });
-      }
-
-      // Delay between requests (be polite)
-      await new Promise(function(resolve) { setTimeout(resolve, 2000); });
-    }
-
-    return results;
-  }
+  // ----------------------------------------------------------------
+  // Public — read APIs
+  // ----------------------------------------------------------------
 
   async findAll(page: number, limit: number) {
     const [data, total] = await Promise.all([
@@ -103,6 +75,51 @@ export class ChaptersService {
     };
   }
 
+  // ----------------------------------------------------------------
+  // Public — crawl APIs
+  // ----------------------------------------------------------------
+
+  /**
+   * Start a crawl job. Returns immediately with crawlId.
+   * Progress events available via SSE at /chapters/crawl/stream?crawlId=...
+   *
+   * DTO accepts either `chapters: number[]` or `range: string` (e.g. "1-50,55,60-70").
+   * Optional `source`: 'novelight' (default) or 'allnovel'.
+   */
+  async startCrawl(dto: CrawlChaptersDto) {
+    const chapters = this.parseChapterInput(dto);
+    const source: CrawlSource = dto.source || 'novelight';
+    const crawlId = crypto.randomUUID();
+    const subject = new Subject<SseEvent>();
+    this.crawlStreams.set(crawlId, subject);
+
+    const fetcher = this.getFetcher(source);
+    this.executeCrawl(crawlId, chapters, subject, fetcher);
+
+    return { crawlId, total: chapters.length, source, message: 'Crawl started' };
+  }
+
+  /**
+   * Sync newest chapters from novelight (auto-detect missing range).
+   */
+  async startSync() {
+    const crawlId = crypto.randomUUID();
+    const subject = new Subject<SseEvent>();
+    this.crawlStreams.set(crawlId, subject);
+
+    this.executeSync(crawlId, subject);
+
+    return { crawlId, message: 'Sync started' };
+  }
+
+  getCrawlStream(crawlId: string): Observable<SseEvent> {
+    const subject = this.crawlStreams.get(crawlId);
+    if (!subject) {
+      throw new NotFoundException(`Crawl ${crawlId} not found`);
+    }
+    return subject.asObservable();
+  }
+
   parseChapterInput(dto: CrawlChaptersDto): number[] {
     if (dto.chapters) return dto.chapters;
     if (dto.range) {
@@ -121,36 +138,23 @@ export class ChaptersService {
     return [];
   }
 
-  async startCrawl(dto: CrawlChaptersDto) {
-    const chapters = this.parseChapterInput(dto);
-    const crawlId = crypto.randomUUID();
-    const subject = new Subject<SseEvent>();
-    this.crawlStreams.set(crawlId, subject);
+  // ----------------------------------------------------------------
+  // Private — crawl execution
+  // ----------------------------------------------------------------
 
-    this.executeCrawl(crawlId, chapters, subject);
-
-    return { crawlId, total: chapters.length, message: 'Crawl started' };
-  }
-
-  getCrawlStream(crawlId: string): Observable<SseEvent> {
-    const subject = this.crawlStreams.get(crawlId);
-    if (!subject) {
-      throw new NotFoundException(`Crawl ${crawlId} not found`);
+  private getFetcher(source: CrawlSource): ChapterFetcher {
+    if (source === 'allnovel') {
+      return (n) => this.allnovelService.crawlChapter(n);
     }
-    return subject.asObservable();
+    return (n) => this.crawlerService.crawlChapterViaHttp(n);
   }
 
-  async startSync() {
-    const crawlId = crypto.randomUUID();
-    const subject = new Subject<SseEvent>();
-    this.crawlStreams.set(crawlId, subject);
-
-    this.executeSync(crawlId, subject);
-
-    return { crawlId, message: 'Sync started' };
-  }
-
-  private async executeCrawl(crawlId: string, chapters: number[], subject: Subject<SseEvent>) {
+  private async executeCrawl(
+    crawlId: string,
+    chapters: number[],
+    subject: Subject<SseEvent>,
+    fetch: ChapterFetcher,
+  ) {
     let crawled = 0;
     let skipped = 0;
     let errors = 0;
@@ -170,7 +174,7 @@ export class ChaptersService {
       }
 
       try {
-        const { title, content } = await this.crawlerService.crawlChapterViaHttp(num);
+        const { title, content } = await fetch(num);
         await this.prisma.chapter.create({
           data: { chapter_number: num, title, content },
         });
@@ -215,7 +219,8 @@ export class ChaptersService {
           { length: latestOnSite - maxInDb },
           (_, i) => maxInDb + 1 + i,
         );
-        await this.executeCrawl(crawlId, missing, subject);
+        const fetcher = this.getFetcher('novelight');
+        await this.executeCrawl(crawlId, missing, subject, fetcher);
       } else {
         subject.next({
           type: 'done',

@@ -29,6 +29,15 @@ export class ChaptersController {
     return this.chaptersService.startCrawl(dto);
   }
 
+  /**
+   * Shortcut for crawling from allnovel.org backup source.
+   * Equivalent to POST /chapters/crawl with `source: "allnovel"` in body.
+   */
+  @Post('crawl/allnovel')
+  startAllnovelCrawl(@Body() dto: CrawlChaptersDto) {
+    return this.chaptersService.startCrawl({ ...dto, source: 'allnovel' });
+  }
+
   @Sse('crawl/stream')
   crawlStream(@Query('crawlId') crawlId: string) {
     return this.chaptersService.getCrawlStream(crawlId);
@@ -37,11 +46,6 @@ export class ChaptersController {
   @Post('sync')
   sync() {
     return this.chaptersService.startSync();
-  }
-
-  @Post('crawl/allnovel')
-  crawlFromAllnovel(@Body() body: { chapters: number[] }) {
-    return this.chaptersService.crawlFromAllnovel(body.chapters);
   }
 
   @Get(':number')

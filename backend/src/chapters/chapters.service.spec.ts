@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ChaptersService } from './chapters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrawlerService } from '../crawler/crawler.service';
+import { AllnovelService } from '../crawler/allnovel.service';
 
 describe('ChaptersService', () => {
   let service: ChaptersService;
@@ -31,7 +32,8 @@ describe('ChaptersService', () => {
       providers: [
         ChaptersService,
         { provide: PrismaService, useValue: prisma },
-        { provide: CrawlerService, useValue: { crawlChapter: jest.fn(), getRandomDelay: () => 0 } },
+        { provide: CrawlerService, useValue: { crawlChapterViaHttp: jest.fn(), getRandomDelay: () => 0 } },
+        { provide: AllnovelService, useValue: { crawlChapter: jest.fn() } },
       ],
     }).compile();
 
