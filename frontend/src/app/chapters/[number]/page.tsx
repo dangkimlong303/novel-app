@@ -101,7 +101,7 @@ export default async function ChapterPage({ params }: PageProps) {
 
         {/* Chapter content */}
         <article className="rounded-lg p-4 md:p-8 bg-white text-gray-900" data-chapter-content>
-          <h1 className="text-2xl font-bold mb-2">{chapter.title}</h1>
+          <h1 className="text-2xl font-bold mb-2">Chapter {chapterNumber}: {chapter.title}</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">~{readTime} min read</p>
           {paragraphs.map(function(p, i) {
             return <p key={i} className="mb-4">{p}</p>;
