@@ -1,3 +1,7 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Language toggle: show content for active language only */
+html[data-lang="en"] [data-lang-content="vi"] { display: none; }
+html[data-lang="vi"] [data-lang-content="en"] { display: none; }

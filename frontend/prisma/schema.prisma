@@ -13,6 +13,7 @@ model Chapter {
   chapter_number Int      @unique
   title          String
   content        String   @db.Text
+  content_vi     String?  @db.Text
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 }

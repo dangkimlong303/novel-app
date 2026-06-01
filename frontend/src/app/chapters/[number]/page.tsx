@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import ReaderClient from '@/components/ReaderClient';
 import KeyboardNav from '@/components/KeyboardNav';
 import ShareButton from '@/components/ShareButton';
+import LanguageToggle from '@/components/LanguageToggle';
 
 interface PageProps {
   params: Promise<{ number: string }>;
@@ -61,7 +62,10 @@ export default async function ChapterPage({ params }: PageProps) {
     }),
   ]);
 
-  const paragraphs = chapter.content.split('\n\n').filter(function(p) { return p.trim(); });
+  const paragraphsEn = chapter.content.split('\n\n').filter(function(p) { return p.trim(); });
+  const paragraphsVi = chapter.content_vi
+    ? chapter.content_vi.split('\n\n').filter(function(p) { return p.trim(); })
+    : null;
   var wordCount = chapter.content.split(/\s+/).length;
   var readTime = Math.max(1, Math.ceil(wordCount / 200));
   const prevNum = prev ? prev.chapter_number : null;
@@ -94,8 +98,9 @@ export default async function ChapterPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Share */}
-        <div className="flex justify-end mb-2">
+        {/* Language toggle + Share */}
+        <div className="flex justify-between items-center mb-2">
+          <LanguageToggle hasVi={paragraphsVi !== null} />
           <ShareButton />
         </div>
 
@@ -103,9 +108,22 @@ export default async function ChapterPage({ params }: PageProps) {
         <article className="rounded-lg p-4 md:p-8 bg-white text-gray-900" data-chapter-content>
           <h1 className="text-2xl font-bold mb-2">Chapter {chapterNumber}: {chapter.title}</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">~{readTime} min read</p>
-          {paragraphs.map(function(p, i) {
-            return <p key={i} className="mb-4">{p}</p>;
-          })}
+
+          {/* English content (shown when data-lang=en) */}
+          <div data-lang-content="en">
+            {paragraphsEn.map(function(p, i) {
+              return <p key={i} className="mb-4">{p}</p>;
+            })}
+          </div>
+
+          {/* Vietnamese content (shown when data-lang=vi) */}
+          {paragraphsVi ? (
+            <div data-lang-content="vi">
+              {paragraphsVi.map(function(p, i) {
+                return <p key={i} className="mb-4">{p}</p>;
+              })}
+            </div>
+          ) : null}
         </article>
 
         {/* Navigation — bottom */}

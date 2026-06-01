@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Chapter {
@@ -12,6 +13,7 @@ model Chapter {
   chapter_number Int      @unique
   title          String
   content        String   @db.Text
+  content_vi     String?  @db.Text
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 }
