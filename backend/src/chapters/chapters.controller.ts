@@ -8,9 +8,10 @@ import {
   Sse,
   ParseIntPipe,
   DefaultValuePipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { ChaptersService } from './chapters.service';
-import { CrawlChaptersDto } from './dto/crawl-chapters.dto';
+import { CrawlChaptersDto, CrawlSource } from './dto/crawl-chapters.dto';
 
 @Controller('chapters')
 export class ChaptersController {
@@ -24,10 +25,10 @@ export class ChaptersController {
     return this.chaptersService.findAll(page, limit);
   }
 
-  @Post('crawl')
-  startCrawl(@Body() dto: CrawlChaptersDto) {
-    return this.chaptersService.startCrawl(dto);
-  }
+  // @Post('crawl')
+  // startCrawl(@Body() dto: CrawlChaptersDto) {
+  //   return this.chaptersService.startCrawl(dto);
+  // }
 
   /**
    * Shortcut for crawling from allnovel.org backup source.
@@ -44,8 +45,11 @@ export class ChaptersController {
   }
 
   @Post('sync')
-  sync() {
-    return this.chaptersService.startSync();
+  sync(@Query('source') source?: string) {
+    if (source && source !== 'novelight' && source !== 'allnovel') {
+      throw new BadRequestException(`Invalid source: ${source}. Must be 'novelight' or 'allnovel'.`);
+    }
+    return this.chaptersService.startSync(source as CrawlSource | undefined);
   }
 
   @Get(':number')

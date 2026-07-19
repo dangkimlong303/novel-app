@@ -12,15 +12,39 @@ export class AllnovelService {
 
   private readonly BASE_URL = 'https://allnovel.org';
   private readonly BOOK_SLUG = 'shadow-slave';
+  private readonly USER_AGENT =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  /**
+   * Get the latest chapter number by parsing the "Latest chapters" block on the book page.
+   */
+  async getLatestChapterNumber(): Promise<number> {
+    const url = `${this.BASE_URL}/${this.BOOK_SLUG}.html`;
+    this.logger.log(`[Allnovel] Fetching book page: ${url}`);
+
+    const res = await fetch(url, { headers: { 'User-Agent': this.USER_AGENT } });
+    if (!res.ok) {
+      throw new Error(`[Allnovel] Book page HTTP ${res.status}`);
+    }
+
+    const html = await res.text();
+    const matches = [...html.matchAll(/\/shadow-slave\/chapter-(\d+)[-.]/g)];
+    const numbers = matches.map((m) => parseInt(m[1], 10));
+    if (numbers.length === 0) {
+      throw new Error('[Allnovel] No chapter links found on book page');
+    }
+
+    const latest = Math.max(...numbers);
+    this.logger.log(`[Allnovel] Latest chapter: ${latest}`);
+    return latest;
+  }
 
   async crawlChapter(chapterNumber: number): Promise<{ title: string; content: string }> {
     const url = `${this.BASE_URL}/${this.BOOK_SLUG}/chapter-${chapterNumber}.html`;
     this.logger.log(`[Allnovel] Fetching: ${url}`);
 
     const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
+      headers: { 'User-Agent': this.USER_AGENT },
     });
 
     if (!res.ok) {

@@ -100,16 +100,17 @@ export class ChaptersService {
   }
 
   /**
-   * Sync newest chapters from novelight (auto-detect missing range).
+   * Sync newest chapters from the given source (auto-detect missing range).
+   * Default source: 'novelight'.
    */
-  async startSync() {
+  async startSync(source: CrawlSource = 'novelight') {
     const crawlId = crypto.randomUUID();
     const subject = new Subject<SseEvent>();
     this.crawlStreams.set(crawlId, subject);
 
-    this.executeSync(crawlId, subject);
+    this.executeSync(crawlId, subject, source);
 
-    return { crawlId, message: 'Sync started' };
+    return { crawlId, source, message: 'Sync started' };
   }
 
   getCrawlStream(crawlId: string): Observable<SseEvent> {
@@ -204,7 +205,7 @@ export class ChaptersService {
     this.crawlStreams.delete(crawlId);
   }
 
-  private async executeSync(crawlId: string, subject: Subject<SseEvent>) {
+  private async executeSync(crawlId: string, subject: Subject<SseEvent>, source: CrawlSource) {
     try {
       const latest = await this.prisma.chapter.findFirst({
         orderBy: { chapter_number: 'desc' },
@@ -212,14 +213,17 @@ export class ChaptersService {
       });
       const maxInDb = latest?.chapter_number ?? 0;
 
-      const latestOnSite = await this.crawlerService.getLatestChapterNumberViaHttp();
+      const latestOnSite =
+        source === 'allnovel'
+          ? await this.allnovelService.getLatestChapterNumber()
+          : await this.crawlerService.getLatestChapterNumberViaHttp();
 
       if (latestOnSite > maxInDb) {
         const missing = Array.from(
           { length: latestOnSite - maxInDb },
           (_, i) => maxInDb + 1 + i,
         );
-        const fetcher = this.getFetcher('novelight');
+        const fetcher = this.getFetcher(source);
         await this.executeCrawl(crawlId, missing, subject, fetcher);
       } else {
         subject.next({

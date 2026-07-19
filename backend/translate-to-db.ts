@@ -97,7 +97,13 @@ async function translate(englishContent: string, previousContext: string | null)
     }
 
     if (res.status === 503 || res.status === 429) {
+      const errText = await res.text();
+      // If daily quota exhausted (limit: 0), stop immediately
+      if (errText.includes('limit: 0') || errText.includes('PerDay')) {
+        throw new Error(`QUOTA_EXHAUSTED — ${errText.substring(0, 300)}`);
+      }
       const wait = 10000 * attempt;
+      if (attempt === 1) console.log(`  ${res.status} detail: ${errText.substring(0, 400)}`);
       console.log(`  ${res.status} — retry in ${wait / 1000}s (attempt ${attempt}/5)`);
       await new Promise((r) => setTimeout(r, wait));
       continue;
