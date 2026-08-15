@@ -3,6 +3,7 @@ import { Subject, Observable } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrawlerService } from '../crawler/crawler.service';
 import { AllnovelService } from '../crawler/allnovel.service';
+import { WuxiaworldService } from '../crawler/wuxiaworld.service';
 import { CrawlChaptersDto, CrawlSource } from './dto/crawl-chapters.dto';
 
 export interface SseEvent {
@@ -21,6 +22,7 @@ export class ChaptersService {
     private prisma: PrismaService,
     private crawlerService: CrawlerService,
     private allnovelService: AllnovelService,
+    private wuxiaworldService: WuxiaworldService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -147,6 +149,9 @@ export class ChaptersService {
     if (source === 'allnovel') {
       return (n) => this.allnovelService.crawlChapter(n);
     }
+    if (source === 'wuxiaworld') {
+      return (n) => this.wuxiaworldService.crawlChapter(n);
+    }
     return (n) => this.crawlerService.crawlChapterViaHttp(n);
   }
 
@@ -216,7 +221,9 @@ export class ChaptersService {
       const latestOnSite =
         source === 'allnovel'
           ? await this.allnovelService.getLatestChapterNumber()
-          : await this.crawlerService.getLatestChapterNumberViaHttp();
+          : source === 'wuxiaworld'
+            ? await this.wuxiaworldService.getLatestChapterNumber()
+            : await this.crawlerService.getLatestChapterNumberViaHttp();
 
       if (latestOnSite > maxInDb) {
         const missing = Array.from(

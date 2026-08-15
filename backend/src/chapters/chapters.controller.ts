@@ -46,8 +46,11 @@ export class ChaptersController {
 
   @Post('sync')
   sync(@Query('source') source?: string) {
-    if (source && source !== 'novelight' && source !== 'allnovel') {
-      throw new BadRequestException(`Invalid source: ${source}. Must be 'novelight' or 'allnovel'.`);
+    const validSources: CrawlSource[] = ['novelight', 'allnovel', 'wuxiaworld'];
+    if (source && !validSources.includes(source as CrawlSource)) {
+      throw new BadRequestException(
+        `Invalid source: ${source}. Must be one of: ${validSources.join(', ')}.`,
+      );
     }
     return this.chaptersService.startSync(source as CrawlSource | undefined);
   }

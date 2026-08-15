@@ -1,7 +1,7 @@
 import { IsOptional, IsArray, IsNumber, IsString, Matches, ValidateIf, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export type CrawlSource = 'novelight' | 'allnovel';
+export type CrawlSource = 'novelight' | 'allnovel' | 'wuxiaworld';
 
 export class CrawlChaptersDto {
   @ValidateIf((o) => !o.range)
@@ -16,6 +16,6 @@ export class CrawlChaptersDto {
   range?: string;
 
   @IsOptional()
-  @IsIn(['novelight', 'allnovel'])
+  @IsIn(['novelight', 'allnovel', 'wuxiaworld'])
   source?: CrawlSource;
 }
